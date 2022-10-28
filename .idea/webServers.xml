@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="46213ed0-bf79-452f-b862-bc6f24fadf4d" name="dev">
+        <fileTransfer rootFolder="/root/ebpf-example-go" accessType="SFTP" host="192.168.1.18" port="22" sshConfigId="a526f65f-7e74-4039-9fd0-fe685d34df26" sshConfig="root@192.168.1.18:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" isUseRsync="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

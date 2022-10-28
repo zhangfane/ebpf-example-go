@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <option name="projectDefaultTargetUuid" value="4f183e60-153f-45fb-873b-aac401962155" />
+    <targets>
+      <target name="root@192.168.1.18:22" type="ssh/sftp" uuid="4f183e60-153f-45fb-873b-aac401962155">
+        <config>
+          <option name="projectRootOnTarget" value="/root/ebpf-example-go" />
+          <option name="serverName" value="root@192.168.1.18:22 password" />
+          <option name="useRsync" value="true" />
+        </config>
+        <ContributedStateBase type="GoLanguageRuntime">
+          <config>
+            <option name="goPath" value="/root/go" />
+            <option name="goRoot" value="/usr/bin/go" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>
