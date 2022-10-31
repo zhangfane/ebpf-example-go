@@ -15,8 +15,8 @@
 
 struct ipv4_value_t {
     u64 value;
-    u64 saddr;
-    u64 daddr;
+    u32 saddr;
+    u32 daddr;
     u32 lport;
     u32 dport;
 };

@@ -6,29 +6,49 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
+//GOPACKAGE=main bpf2go -cc clang -cflags '-O2 -g -Wall -Werror -D__TARGET_ARCH_x86' -target bpfel,bpfeb bpf pid.bpf.c -- -I /root/bpftool/src/libbpf/include -idirafter /usr/lib/llvm-15/lib/clang/15.0.2/include -idirafter /usr/local/include -idirafter /usr/include/x86_64-linux-gnu -idirafter /usr/include
+//GOPACKAGE=main bpf2go -cc clang -cflags '-O2 -g -Wall -Werror -D__TARGET_ARCH_x86' -target bpfel,bpfeb bpf pid.bpf.c -- -I /root/bpftool/src/libbpf/include -idirafter /usr/lib/llvm-15/lib/clang/15.0.2/include -idirafter /usr/local/include -idirafter /usr/include/x86_64-linux-gnu -idirafter /usr/include
+//go:generate bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel,bpfeb bpf pid.bpf.c -- -I /root/bpftool/src/libbpf/include $BPF_HEADERS
+
 type ipv4Key struct {
-	pid uint32
+	Pid uint32
 }
 type ipv4Val struct {
 	Value uint64
-	Saddr uint64
-	Daddr uint64
+	Saddr uint32
+	Daddr uint32
 	Lport uint32
 	Dport uint32
 }
 
+func inet_ntoa(ipnr uint32) net.IP {
+	var bytes [4]byte
+	bytes[0] = byte(ipnr & 0xFF)
+	bytes[1] = byte((ipnr >> 8) & 0xFF)
+	bytes[2] = byte((ipnr >> 16) & 0xFF)
+	bytes[3] = byte((ipnr >> 24) & 0xFF)
+
+	return net.IPv4(bytes[0], bytes[1], bytes[2], bytes[3])
+}
 func IntToBytes(n int) []byte {
 	x := int32(n)
 
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	binary.Write(bytesBuffer, binary.BigEndian, x)
 	return bytesBuffer.Bytes()
+}
+
+func int2ip(nn uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, nn)
+	return ip
 }
 
 func main() {
@@ -46,7 +66,6 @@ func main() {
 		log.Fatalf("loading objects: %s", err)
 	}
 	defer objs.Close()
-
 	//// init the map element
 	//var key [64]byte
 	//copy(key[:], []byte("execve_counter"))
@@ -61,35 +80,31 @@ func main() {
 		log.Fatalf("opening tracepoint: %s", err)
 	}
 	defer kp.Close()
-	key := ipv4Key{
-		pid: 69324,
-	}
+	key := ipv4Key{}
 	var val ipv4Val
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
+	log.Printf("%-15s %-6s -> %-15s %-6s %-6s",
+		"Src addr",
+		"Port",
+		"Dest addr",
+		"Port",
+		"RTT")
 	for {
 		select {
 		case <-ticker.C:
-			err = objs.Ipv4SendBytes.Lookup(&key, &val)
-			if err != nil {
-				log.Printf("execve_counter err: %v\n", err)
+			iter := objs.bpfMaps.Ipv4SendBytes.Iterate()
+			for iter.Next(&key, &val) {
+				log.Printf("%-15s %-6d -> %-15s %-6d %-6d",
+					inet_ntoa(val.Saddr),
+					val.Lport,
+					inet_ntoa(val.Daddr),
+					val.Dport, val.Value)
 			}
-			//for _, v := range val {
-			//	log.Printf("execve_counter: %v\n", v.value)
-			//
-			//}
-
-			//for objs.Ipv4SendBytes.Iterate().Next(&key, &val) {
-			//	log.Printf("execve_counter: %d\n", val.value)
-			//}
-			//if err := objs.Ipv4SendBytes.Iterate().Err(); err != nil {
-			//	panic(fmt.Sprint("Iterator encountered an error:", err))
-			//}
-
-			//if err := objs.bpfMaps.Ipv4SendBytes.(key, &val); err != nil {
-			//	log.Fatalf("reading map error: %s", err)
-			//}
-			log.Printf("execve_counter: %d\n", val.Value)
+			if iter.Err() != nil {
+				log.Printf("err: %v\n", err)
+				continue
+			}
 
 		case <-stopper:
 			// Wait for a signal and close the perf reader,
